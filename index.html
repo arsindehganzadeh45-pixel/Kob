@@ -45,8 +45,8 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
 <body>
 <div class="wrap">
   <header>
-    <h1>🚀 پنل گیمینگ حرفه‌ای</h1>
-    <p style="color:var(--muted);margin-top:6px;font-size:0.9rem">سرور اختصاصی گیم | WireGuard | ظرفیت کل: ۵۰۰ گیگابایت</p>
+    <h1>🚀 پنل گیمینگ ارتقایافته</h1>
+    <p style="color:var(--muted);margin-top:6px;font-size:0.9rem">سرور اختصاصی گیم | فرمت دقیق مدل فایل شما | ظرفیت: ۵۰۰ گیگابایت</p>
     <span class="badge">مالک: Arsin_Al</span>
   </header>
 
@@ -68,7 +68,7 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
 
   <div id="tab-create" class="tab">
     <div class="card">
-      <h2>➕ ساخت کانفیگ گیمینگ ۵۰۰ گیگی</h2>
+      <h2>➕ ساخت کانفیگ گیمینگ جدید</h2>
       <div class="row">
         <div><label>روز اعتبار</label><input type="number" id="cfgDays" min="1" max="365" value="30"/></div>
         <div><label>کاربر</label><input type="number" id="cfgUsers" min="1" max="50" value="1"/></div>
@@ -76,7 +76,7 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
       </div>
       <label>نام کانفیگ (اختیاری)</label>
       <input type="text" id="cfgName" placeholder="گیمینگ پینگ پایین"/>
-      <div style="margin-top:12px"><button type="button" class="btn btn-p" id="btnCreate">✨ ساخت + دانلود</button></div>
+      <div style="margin-top:12px"><button type="button" class="btn btn-p" id="btnCreate">✨ ساخت کانفیگ دقیق مثل فایل شما + دانلود</button></div>
     </div>
   </div>
 
@@ -109,13 +109,12 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
 
 <script>
 (function(){
-  var PANEL = {"id":"pnl_arsin_game","countryCode":"gaming","countryName":"سرور گیمینگ اختصاصی","flag":"🎮","totalGB":500,"endpoint":"138.201.100.1:51820"};
+  var PANEL = {"id":"pnl_arsin_game_v3","countryCode":"gaming","countryName":"سرور گیمینگ اختصاصی","flag":"🎮","totalGB":500,"endpoint":"138.201.100.1:51820"};
+  // مقادیر دقیق و اصلی برگرفته از فایل ONB.conf شما
   var SERVER_PUBLIC_KEY = "rzWsMlA0bf7Ze8L/6drBf2YTUwXNQXxQ5lSHuiyDVxs=";
-  var SOURCE_PRIVATE_KEY = "GJaTH3o8Or1brhfmJ/ljRwuBsIIL/lToCxQvJppHQ1c=";
-  var SOURCE_ADDRESS = "10.38.59.39/32";
   var SOURCE_DNS = "208.67.220.200, 208.67.222.222";
   var SOURCE_MTU = 1280;
-  var STORAGE_KEY = "wg_arsin_al_game_panel_v1";
+  var STORAGE_KEY = "wg_arsin_al_game_panel_v3";
   var CONFIGS = [];
   var CONSUMED = 0;
   var LAST_SUB_URL = "";
@@ -181,30 +180,42 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
     return Math.max(0, (Number(cfg.gb)||0) - (Number(cfg.usedGB)||0)) > 0;
   }
 
+  function toB64(buf) {
+    var b = new Uint8Array(buf), s = "";
+    for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s);
+  }
+  
+  // تولید کلید اختصاصی و آدرس IP دقیقاً مطابق ساختار فایل خودتون
+  function genKeyPair() {
+    var p = new Uint8Array(32);
+    crypto.getRandomValues(p);
+    p[0] &= 248; p[31] &= 127; p[31] |= 64;
+    var priv = toB64(p);
+    var ipSuffix = 10 + Math.floor(Math.random() * 230);
+    var address = "10.38.59." + ipSuffix + "/32";
+    return { privateKey: priv, address: address };
+  }
+
   function buildConf(name, days, users, gb) {
-    var ep = PANEL.endpoint, dns = SOURCE_DNS;
+    var keys = genKeyPair();
+    var ep = PANEL.endpoint;
     var safe = String(name).replace(/[^\x20-\x7E]/g,"_").slice(0,40);
+    
+    // قالب دقیقاً مثل ساختار فایل ONB.conf که فرستاده بودی
     var conf = [
-      "# Gaming WireGuard | Owner: Arsin_Al",
-      "# Name: "+safe,
-      "# Volume: "+gb+"GB | Users: "+users,
-      "# Time: "+days+" days",
-      "# Server: "+ep,
-      "",
       "[Interface]",
-      "PrivateKey = "+SOURCE_PRIVATE_KEY,
-      "Address = "+SOURCE_ADDRESS,
-      "DNS = "+dns,
-      "MTU = "+SOURCE_MTU,
+      "PrivateKey = " + keys.privateKey,
+      "Address = " + keys.address,
+      "DNS = " + SOURCE_DNS,
+      "MTU = " + SOURCE_MTU,
       "",
       "[Peer]",
-      "PublicKey = "+SERVER_PUBLIC_KEY,
-      "AllowedIPs = 0.0.0.0/0, ::/0",
-      "Endpoint = "+ep,
-      "PersistentKeepalive = 15",
+      "PublicKey = " + SERVER_PUBLIC_KEY,
+      "Endpoint = " + ep,
       ""
     ].join("\n");
-    return { conf: conf, endpoint: ep, dns: dns, privateKey: SOURCE_PRIVATE_KEY };
+    return { conf: conf, endpoint: ep, privateKey: keys.privateKey };
   }
 
   function downloadText(text, filename) {
@@ -321,7 +332,7 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
       '<div class="row"><span class="lbl">شناسه</span><span class="val">'+subId+'</span></div>'+
       '<div class="row"><span class="lbl">حجم</span><span class="val">'+totalGB+' GB</span></div>'+
       '<div class="row"><span class="lbl">روز اعتبار</span><span class="val">'+(cfg.days||0)+' روز</span></div>'+
-      '<div class="row"><span class="lbl">سرور</span><span class="val">'+PANEL.flag+' گیمینگ</span></div>'+
+      '<div class="row"><span class="lbl">سرور</span><span class="val">🎮 گیمینگ</span></div>'+
       '<div class="row"><span class="lbl">وضعیت</span><span class="val"><span class="pill '+(on?"ok":"off")+'">'+statusTxt+'</span></span></div></div>'+
       '<div class="conf">'+(confData||"⛔ کانفیگ غیرفعال").replace(/</g,"&lt;")+'</div>'+
       (on?'<button class="btn" onclick="var c='+JSON.stringify(confData)+';var a=document.createElement(\'a\');a.href=URL.createObjectURL(new Blob([c]));a.download=\'config.conf\';a.click()">⬇️ دانلود کانفیگ</button>':'<button class="btn" disabled>⛔ دانلود غیرفعال</button>')+
@@ -413,7 +424,7 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
     var built = buildConf(name, days, users, gb);
     CONFIGS.unshift({
       id: "cfg_"+Date.now().toString(36), name:name, days:days, users:users, gb:gb, usedGB:0,
-      endpoint: built.endpoint, dns: built.dns, confText: built.conf, privateKey: built.privateKey,
+      endpoint: built.endpoint, confText: built.conf, privateKey: built.privateKey,
       createdAt: new Date().toISOString(), expiresAt: new Date(Date.now()+days*86400000).toISOString(), inSub: true, httpsSubUrl: null
     });
     CONSUMED = (Number(CONSUMED)||0) + gb;
@@ -450,9 +461,9 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
       save(); renderAll();
       toast(cfg.inSub!==false?"✅ فعال":"⏸ غیرفعال");
     } else if (a === "reset") {
-      if (!confirm("آپدیت این کانفیگ؟")) return;
+      if (!confirm("آپدیت این کانفیگ و تولید کلید جدید؟")) return;
       var built = buildConf(cfg.name, cfg.days, cfg.users, cfg.gb);
-      cfg.confText = built.conf; cfg.endpoint = built.endpoint; cfg.dns = built.dns;
+      cfg.confText = built.conf; cfg.endpoint = built.endpoint;
       cfg.httpsSubUrl = null; LAST_SUB_URL = "";
       save(); renderAll(); toast("🔄 آپدیت شد");
     } else if (a === "del") {
@@ -500,7 +511,7 @@ textarea{min-height:70px;font-family:monospace;font-size:0.75rem;direction:ltr;t
 
   load();
   renderAll();
-  toast("پنل اختصاصی گیم Arsin_Al بارگذاری شد");
+  toast("پنل با فرمت دقیق فایل شما آماده است");
 })();
 </script>
 </body>
